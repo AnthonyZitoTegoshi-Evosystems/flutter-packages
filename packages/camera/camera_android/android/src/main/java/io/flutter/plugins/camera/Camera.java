@@ -580,7 +580,7 @@ class Camera
     //} else {
     //  runPrecaptureSequence();
     //}
-    takePictureAfterPrecapture();
+    //takePictureAfterPrecapture();
   }
 
   /**
