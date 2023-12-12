@@ -578,8 +578,9 @@ class Camera
     //if (isAutoFocusSupported && autoFocusFeature.getValue() == FocusMode.auto) {
     //  runPictureAutoFocus();
     //} else {
-      runPrecaptureSequence();
+    //  runPrecaptureSequence();
     //}
+    takePictureAfterPrecapture();
   }
 
   /**
