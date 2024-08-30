@@ -34,12 +34,13 @@ import 'type_conversion.dart';
 /// [package:url_launcher_web](https://pub.dev/packages/url_launcher_web#limitations-on-the-web-platform)
 /// for more details.
 ///
-/// Returns true if the URL was launched successful, otherwise either returns
+/// Returns true if the URL was launched successfully, otherwise either returns
 /// false or throws a [PlatformException] depending on the failure.
 Future<bool> launchUrl(
   Uri url, {
   LaunchMode mode = LaunchMode.platformDefault,
   WebViewConfiguration webViewConfiguration = const WebViewConfiguration(),
+  BrowserConfiguration browserConfiguration = const BrowserConfiguration(),
   String? webOnlyWindowName,
 }) async {
   if ((mode == LaunchMode.inAppWebView ||
@@ -52,7 +53,8 @@ Future<bool> launchUrl(
     url.toString(),
     LaunchOptions(
       mode: convertLaunchMode(mode),
-      webViewConfiguration: convertConfiguration(webViewConfiguration),
+      webViewConfiguration: convertWebViewConfiguration(webViewConfiguration),
+      browserConfiguration: convertBrowserConfiguration(browserConfiguration),
       webOnlyWindowName: webOnlyWindowName,
     ),
   );

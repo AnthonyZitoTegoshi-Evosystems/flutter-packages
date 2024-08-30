@@ -1,3 +1,34 @@
+## NEXT
+
+* Updates minimum supported SDK version to Flutter 3.22/Dart 3.4.
+
+## 0.3.1+4
+
+* Restores support for Dart `^3.3.0`.
+
+## 0.3.1+3
+
+* Updates `README.md` to reflect modern `index.html` script tag placement.
+
+## 0.3.1+2
+
+* Adds support for `web: ^1.0.0`.
+* Updates SDK version to Dart `^3.4.0`. Flutter `^3.22.0`.
+
+## 0.3.1+1
+
+* Uses `TrustedTypes` from `web: ^0.5.1`.
+
+## 0.3.1
+
+* Updates web code to package `web: ^0.5.0`.
+* Updates SDK version to Dart `^3.3.0`. Flutter `^3.19.0`.
+
+## 0.3.0+2
+
+* Adds `fedcm_auto` to `CredentialSelectBy` enum.
+* Adds `unknown_reason` to all `Moment*Reason` enums.
+
 ## 0.3.0+1
 
 * Corrects 0.3.0 changelog entry about the minimum Flutter/Dart dependencies.

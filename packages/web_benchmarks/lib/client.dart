@@ -7,7 +7,7 @@ import 'dart:convert' show json;
 import 'dart:js_interop';
 import 'dart:math' as math;
 
-import 'package:web/helpers.dart';
+import 'package:web/web.dart';
 
 import 'src/common.dart';
 import 'src/recorder.dart';
@@ -24,6 +24,15 @@ typedef RecorderFactory = Recorder Function();
 late Map<String, RecorderFactory> _benchmarks;
 
 final LocalBenchmarkServerClient _client = LocalBenchmarkServerClient();
+
+/// Adapts between web:0.5.1 and 1.0.0, so this package is compatible with both.
+extension on HTMLElement {
+  @JS('innerHTML')
+  external set innerHTMLString(String value);
+  @JS('insertAdjacentHTML')
+  external void insertAdjacentHTMLString(String position, String string);
+  void appendHtml(String input) => insertAdjacentHTMLString('beforeend', input);
+}
 
 /// Starts a local benchmark client to run [benchmarks].
 ///
@@ -152,14 +161,12 @@ void _fallbackToManual(String error) {
 void _printResultsToScreen(Profile profile) {
   final HTMLBodyElement body = document.body! as HTMLBodyElement;
 
-  body.innerHTML = '<h2>${profile.name}</h2>';
+  body.innerHTMLString = '<h2>${profile.name}</h2>';
 
   profile.scoreData.forEach((String scoreKey, Timeseries timeseries) {
     body.appendHtml('<h2>$scoreKey</h2>');
     body.appendHtml('<pre>${timeseries.computeStats()}</pre>');
-    // TODO(kevmoo): remove `NodeGlue` cast when we no longer need to support
-    // pkg:web 0.3.0
-    NodeGlue(body).append(TimeseriesVisualization(timeseries).render());
+    body.appendChild(TimeseriesVisualization(timeseries).render());
   });
 }
 
@@ -168,7 +175,7 @@ class TimeseriesVisualization {
   /// Creates a visualization for a [Timeseries].
   TimeseriesVisualization(this._timeseries) {
     _stats = _timeseries.computeStats();
-    _canvas = CanvasElement();
+    _canvas = HTMLCanvasElement();
     _screenWidth = window.screen.width;
     _canvas.width = _screenWidth;
     _canvas.height = (_kCanvasHeight * window.devicePixelRatio).round();
@@ -192,7 +199,7 @@ class TimeseriesVisualization {
 
   final Timeseries _timeseries;
   late TimeseriesStats _stats;
-  late CanvasElement _canvas;
+  late HTMLCanvasElement _canvas;
   late CanvasRenderingContext2D _ctx;
   late int _screenWidth;
 
@@ -215,7 +222,7 @@ class TimeseriesVisualization {
   }
 
   /// Renders the timeseries into a `<canvas>` and returns the canvas element.
-  CanvasElement render() {
+  HTMLCanvasElement render() {
     _ctx.translate(0, _kCanvasHeight * window.devicePixelRatio);
     _ctx.scale(1, -window.devicePixelRatio);
 
@@ -320,7 +327,7 @@ class LocalBenchmarkServerClient {
   /// DevTools Protocol.
   Future<void> startPerformanceTracing(String? benchmarkName) async {
     _checkNotManualMode();
-    await HttpRequest.request(
+    await _requestXhr(
       '/start-performance-tracing?label=$benchmarkName',
       method: 'POST',
       mimeType: 'application/json',
@@ -330,7 +337,7 @@ class LocalBenchmarkServerClient {
   /// Stops the performance tracing session started by [startPerformanceTracing].
   Future<void> stopPerformanceTracing() async {
     _checkNotManualMode();
-    await HttpRequest.request(
+    await _requestXhr(
       '/stop-performance-tracing',
       method: 'POST',
       mimeType: 'application/json',
@@ -358,7 +365,7 @@ class LocalBenchmarkServerClient {
   /// The server will halt the devicelab task and log the error.
   Future<void> reportError(dynamic error, StackTrace stackTrace) async {
     _checkNotManualMode();
-    await HttpRequest.request(
+    await _requestXhr(
       '/on-error',
       method: 'POST',
       mimeType: 'application/json',
@@ -372,7 +379,7 @@ class LocalBenchmarkServerClient {
   /// Reports a message about the demo to the benchmark server.
   Future<void> printToConsole(String report) async {
     _checkNotManualMode();
-    await HttpRequest.request(
+    await _requestXhr(
       '/print-to-console',
       method: 'POST',
       mimeType: 'text/plain',
@@ -386,7 +393,7 @@ class LocalBenchmarkServerClient {
     String url, {
     required String method,
     required String mimeType,
-    required String sendData,
+    String? sendData,
   }) {
     final Completer<XMLHttpRequest> completer = Completer<XMLHttpRequest>();
     final XMLHttpRequest xhr = XMLHttpRequest();
@@ -396,11 +403,11 @@ class LocalBenchmarkServerClient {
       completer.complete(xhr);
     });
     xhr.onError.listen(completer.completeError);
-    xhr.send(sendData.toJS);
+    if (sendData != null) {
+      xhr.send(sendData.toJS);
+    } else {
+      xhr.send();
+    }
     return completer.future;
   }
-}
-
-extension on HTMLElement {
-  void appendHtml(String input) => insertAdjacentHTML('beforeend', input);
 }

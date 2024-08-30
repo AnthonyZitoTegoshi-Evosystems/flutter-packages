@@ -23,11 +23,6 @@
     - any-glob-to-any-file:
       - third_party/packages/cupertino_icons/**/*
 
-'p: dynamic_layouts':
-  - changed-files:
-    - any-glob-to-any-file:
-      - packages/dynamic_layouts/**/*
-
 'p: espresso':
   - changed-files:
     - any-glob-to-any-file:
@@ -112,6 +107,11 @@
   - changed-files:
     - any-glob-to-any-file:
       - packages/in_app_purchase/**/*
+
+'p: interactive_media_ads':
+  - changed-files:
+    - any-glob-to-any-file:
+      - packages/interactive_media_ads/**/*
 
 'p: ios_platform_images':
   - changed-files:
@@ -212,9 +212,13 @@
 'platform-ios':
   - changed-files:
     - any-glob-to-any-file:
+      - packages/*/*_avfoundation/**/*
+      - packages/*/*_darwin/**/*
+      - packages/*/*_foundation/**/*
       - packages/*/*_ios/**/*
       - packages/*/*_storekit/**/*
       - packages/*/*_wkwebview/**/*
+      - packages/**/darwin/**/*
       - packages/**/ios/**/*
 
 'platform-linux':
@@ -226,7 +230,12 @@
 'platform-macos':
   - changed-files:
     - any-glob-to-any-file:
+      - packages/*/*_avfoundation/**/*
+      - packages/*/*_darwin/**/*
+      - packages/*/*_foundation/**/*
       - packages/*/*_macos/**/*
+      - packages/*/*_storekit/**/*
+      - packages/**/darwin/**/*
       - packages/**/macos/**/*
 
 'platform-web':

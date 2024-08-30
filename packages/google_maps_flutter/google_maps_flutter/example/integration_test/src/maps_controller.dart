@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:integration_test/integration_test.dart';
 
+import 'resources/icon_image_base64.dart';
 import 'shared.dart';
 
 /// Integration Tests that only need a standard [GoogleMapController].
@@ -401,6 +403,112 @@ void runTests() {
     expect(iwVisibleStatus, false);
   });
 
+  testWidgets('markerWithAssetMapBitmap', (WidgetTester tester) async {
+    final Set<Marker> markers = <Marker>{
+      Marker(
+          markerId: const MarkerId('1'),
+          icon: AssetMapBitmap(
+            'assets/red_square.png',
+            imagePixelRatio: 1.0,
+          )),
+    };
+    await pumpMap(
+      tester,
+      GoogleMap(
+        initialCameraPosition: const CameraPosition(target: LatLng(10.0, 15.0)),
+        markers: markers,
+      ),
+    );
+  });
+
+  testWidgets('markerWithAssetMapBitmapCreate', (WidgetTester tester) async {
+    final ImageConfiguration imageConfiguration = ImageConfiguration(
+      devicePixelRatio: tester.view.devicePixelRatio,
+    );
+    final Set<Marker> markers = <Marker>{
+      Marker(
+          markerId: const MarkerId('1'),
+          icon: await AssetMapBitmap.create(
+            imageConfiguration,
+            'assets/red_square.png',
+          )),
+    };
+    await pumpMap(
+      tester,
+      GoogleMap(
+        initialCameraPosition: const CameraPosition(target: LatLng(10.0, 15.0)),
+        markers: markers,
+      ),
+    );
+  });
+
+  testWidgets('markerWithBytesMapBitmap', (WidgetTester tester) async {
+    final Uint8List bytes = const Base64Decoder().convert(iconImageBase64);
+    final Set<Marker> markers = <Marker>{
+      Marker(
+        markerId: const MarkerId('1'),
+        icon: BytesMapBitmap(
+          bytes,
+          imagePixelRatio: tester.view.devicePixelRatio,
+        ),
+      ),
+    };
+    await pumpMap(
+      tester,
+      GoogleMap(
+        initialCameraPosition: const CameraPosition(target: LatLng(10.0, 15.0)),
+        markers: markers,
+      ),
+    );
+  });
+
+  testWidgets('markerWithLegacyAsset', (WidgetTester tester) async {
+    tester.view.devicePixelRatio = 2.0;
+    final ImageConfiguration imageConfiguration = ImageConfiguration(
+      devicePixelRatio: tester.view.devicePixelRatio,
+      size: const Size(100, 100),
+    );
+    final Set<Marker> markers = <Marker>{
+      Marker(
+          markerId: const MarkerId('1'),
+          icon: await BitmapDescriptor.fromAssetImage(
+            imageConfiguration,
+            'assets/red_square.png',
+          )),
+    };
+    await pumpMap(
+      tester,
+      GoogleMap(
+        initialCameraPosition: const CameraPosition(target: LatLng(10.0, 15.0)),
+        markers: markers,
+      ),
+    );
+
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('markerWithLegacyBytes', (WidgetTester tester) async {
+    tester.view.devicePixelRatio = 2.0;
+    final Uint8List bytes = const Base64Decoder().convert(iconImageBase64);
+    final Set<Marker> markers = <Marker>{
+      Marker(
+          markerId: const MarkerId('1'),
+          icon: BitmapDescriptor.fromBytes(
+            bytes,
+            size: const Size(100, 100),
+          )),
+    };
+    await pumpMap(
+      tester,
+      GoogleMap(
+        initialCameraPosition: const CameraPosition(target: LatLng(10.0, 15.0)),
+        markers: markers,
+      ),
+    );
+
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('testTakeSnapshot', (WidgetTester tester) async {
     final Completer<GoogleMapController> controllerCompleter =
         Completer<GoogleMapController>();
@@ -448,6 +556,28 @@ void runTests() {
       await mapIdCompleter.future;
     },
   );
+
+  testWidgets('getStyleError reports last error', (WidgetTester tester) async {
+    final Key key = GlobalKey();
+    final Completer<GoogleMapController> controllerCompleter =
+        Completer<GoogleMapController>();
+
+    await pumpMap(
+      tester,
+      GoogleMap(
+        key: key,
+        initialCameraPosition: kInitialCameraPosition,
+        style: '[[[this is an invalid style',
+        onMapCreated: (GoogleMapController controller) {
+          controllerCompleter.complete(controller);
+        },
+      ),
+    );
+
+    final GoogleMapController controller = await controllerCompleter.future;
+    final String? error = await controller.getStyleError();
+    expect(error, isNotNull);
+  });
 }
 
 /// Repeatedly checks an asynchronous value against a test condition.

@@ -111,9 +111,9 @@ static FlutterError *getFlutterError(NSError *error) {
 
 - (void)initializeSignInWithParameters:(nonnull FSIInitParams *)params
                                  error:(FlutterError *_Nullable __autoreleasing *_Nonnull)error {
-  GIDConfiguration *configuration = [self configurationWithClientIdArgument:params.clientId
-                                                     serverClientIdArgument:params.serverClientId
-                                                       hostedDomainArgument:params.hostedDomain];
+  GIDConfiguration *configuration = [self configurationWithClientIdentifier:params.clientId
+                                                     serverClientIdentifier:params.serverClientId
+                                                               hostedDomain:params.hostedDomain];
   self.requestedScopes = [NSSet setWithArray:params.scopes];
   if (configuration != nil) {
     self.configuration = configuration;
@@ -124,7 +124,12 @@ static FlutterError *getFlutterError(NSError *error) {
                                                        FlutterError *_Nullable))completion {
   [self.signIn restorePreviousSignInWithCompletion:^(GIDGoogleUser *_Nullable user,
                                                      NSError *_Nullable error) {
-    [self didSignInForUser:user withServerAuthCode:nil completion:completion error:error];
+    if (user != nil) {
+      [self didSignInForUser:user withServerAuthCode:nil completion:completion];
+    } else {
+      // Forward all errors and let Dart side decide how to handle.
+      completion(nil, getFlutterError(error));
+    }
   }];
 }
 
@@ -141,9 +146,9 @@ static FlutterError *getFlutterError(NSError *error) {
     // If neither are available, do not set the configuration - GIDSignIn will automatically use
     // settings from the Info.plist (which is the recommended method).
     if (!self.configuration && self.googleServiceProperties) {
-      self.configuration = [self configurationWithClientIdArgument:nil
-                                            serverClientIdArgument:nil
-                                              hostedDomainArgument:nil];
+      self.configuration = [self configurationWithClientIdentifier:nil
+                                            serverClientIdentifier:nil
+                                                      hostedDomain:nil];
     }
     if (self.configuration) {
       self.signIn.configuration = self.configuration;
@@ -152,17 +157,14 @@ static FlutterError *getFlutterError(NSError *error) {
     [self signInWithHint:nil
         additionalScopes:self.requestedScopes.allObjects
               completion:^(GIDSignInResult *_Nullable signInResult, NSError *_Nullable error) {
-                GIDGoogleUser *user;
-                NSString *serverAuthCode;
                 if (signInResult) {
-                  user = signInResult.user;
-                  serverAuthCode = signInResult.serverAuthCode;
+                  [self didSignInForUser:signInResult.user
+                      withServerAuthCode:signInResult.serverAuthCode
+                              completion:completion];
+                } else {
+                  // Forward all errors and let Dart side decide how to handle.
+                  completion(nil, getFlutterError(error));
                 }
-
-                [self didSignInForUser:user
-                    withServerAuthCode:serverAuthCode
-                            completion:completion
-                                 error:error];
               }];
   } @catch (NSException *e) {
     completion(nil, [FlutterError errorWithCode:@"google_sign_in" message:e.reason details:e.name]);
@@ -270,30 +272,19 @@ static FlutterError *getFlutterError(NSError *error) {
 #endif
 }
 
-/// @return @c nil if GoogleService-Info.plist not found and clientId is not provided.
-- (GIDConfiguration *)configurationWithClientIdArgument:(id)clientIDArg
-                                 serverClientIdArgument:(id)serverClientIDArg
-                                   hostedDomainArgument:(id)hostedDomainArg {
-  NSString *clientID;
-  BOOL hasDynamicClientId = [clientIDArg isKindOfClass:[NSString class]];
-  if (hasDynamicClientId) {
-    clientID = clientIDArg;
-  } else if (self.googleServiceProperties) {
-    clientID = self.googleServiceProperties[kClientIdKey];
-  } else {
-    // We couldn't resolve a clientId, without which we cannot create a GIDConfiguration.
+/// @return @c nil if GoogleService-Info.plist not found and runtimeClientIdentifier is not
+/// provided.
+- (GIDConfiguration *)configurationWithClientIdentifier:(NSString *)runtimeClientIdentifier
+                                 serverClientIdentifier:(NSString *)runtimeServerClientIdentifier
+                                           hostedDomain:(NSString *)hostedDomain {
+  NSString *clientID = runtimeClientIdentifier ?: self.googleServiceProperties[kClientIdKey];
+  if (!clientID) {
+    // Creating a GIDConfiguration requires a client identifier.
     return nil;
   }
+  NSString *serverClientID =
+      runtimeServerClientIdentifier ?: self.googleServiceProperties[kServerClientIdKey];
 
-  BOOL hasDynamicServerClientId = [serverClientIDArg isKindOfClass:[NSString class]];
-  NSString *serverClientID = hasDynamicServerClientId
-                                 ? serverClientIDArg
-                                 : self.googleServiceProperties[kServerClientIdKey];
-
-  NSString *hostedDomain = nil;
-  if (hostedDomainArg != [NSNull null]) {
-    hostedDomain = hostedDomainArg;
-  }
   return [[GIDConfiguration alloc] initWithClientID:clientID
                                      serverClientID:serverClientID
                                        hostedDomain:hostedDomain
@@ -302,30 +293,21 @@ static FlutterError *getFlutterError(NSError *error) {
 
 - (void)didSignInForUser:(GIDGoogleUser *)user
       withServerAuthCode:(NSString *_Nullable)serverAuthCode
-              completion:(nonnull void (^)(FSIUserData *_Nullable,
-                                           FlutterError *_Nullable))completion
-                   error:(NSError *)error {
-  if (error != nil) {
-    // Forward all errors and let Dart side decide how to handle.
-    completion(nil, getFlutterError(error));
-  } else {
-    NSURL *photoUrl;
-    if (user.profile.hasImage) {
-      // Placeholder that will be replaced by on the Dart side based on screen size.
-      photoUrl = [user.profile imageURLWithDimension:1337];
-    }
-    NSString *idToken;
-    if (user.idToken) {
-      idToken = user.idToken.tokenString;
-    }
-    completion([FSIUserData makeWithDisplayName:user.profile.name
-                                          email:user.profile.email
-                                         userId:user.userID
-                                       photoUrl:[photoUrl absoluteString]
-                                 serverAuthCode:serverAuthCode
-                                        idToken:idToken],
-               nil);
+              completion:
+                  (nonnull void (^)(FSIUserData *_Nullable, FlutterError *_Nullable))completion {
+  NSURL *photoUrl;
+  if (user.profile.hasImage) {
+    // Placeholder that will be replaced by on the Dart side based on screen size.
+    photoUrl = [user.profile imageURLWithDimension:1337];
   }
+
+  completion([FSIUserData makeWithDisplayName:user.profile.name
+                                        email:user.profile.email
+                                       userId:user.userID
+                                     photoUrl:photoUrl.absoluteString
+                               serverAuthCode:serverAuthCode
+                                      idToken:user.idToken.tokenString],
+             nil);
 }
 
 #if TARGET_OS_IOS
@@ -340,18 +322,16 @@ static FlutterError *getFlutterError(NSError *error) {
 #pragma clang diagnostic pop
 }
 
-/**
- * This method recursively iterate through the view hierarchy
- * to return the top most view controller.
- *
- * It supports the following scenarios:
- *
- * - The view controller is presenting another view.
- * - The view controller is a UINavigationController.
- * - The view controller is a UITabBarController.
- *
- * @return The top most view controller.
- */
+/// This method recursively iterate through the view hierarchy
+/// to return the top most view controller.
+///
+/// It supports the following scenarios:
+///
+/// - The view controller is presenting another view.
+/// - The view controller is a UINavigationController.
+/// - The view controller is a UITabBarController.
+///
+/// @return The top most view controller.
 - (UIViewController *)topViewControllerFromViewController:(UIViewController *)viewController {
   if ([viewController isKindOfClass:[UINavigationController class]]) {
     UINavigationController *navigationController = (UINavigationController *)viewController;
