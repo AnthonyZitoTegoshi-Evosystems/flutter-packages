@@ -28,7 +28,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 
 const val TAG = "SharedPreferencesPlugin"
-const val SHARED_PREFERENCES_NAME = "FlutterSharedPreferences"
+const val SHARED_PREFERENCES_NAME = "com.contapronta.contapronta.xamarinessentials"
 const val LIST_PREFIX = "VGhpcyBpcyB0aGUgcHJlZml4IGZvciBhIGxpc3Qu"
 
 private val Context.sharedPreferencesDataStore: DataStore<Preferences> by
