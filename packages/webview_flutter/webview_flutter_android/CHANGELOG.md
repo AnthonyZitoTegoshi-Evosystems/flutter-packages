@@ -1,3 +1,92 @@
+## 4.7.0
+
+* Adds support to respond to recoverable SSL certificate errors. See `AndroidNavigationDelegate.setOnSSlAuthError`.
+
+## 4.6.0
+
+* Adds support to set using wide view port. See `AndroidWebViewController.setUseWideViewPort`.
+* Changes default of `WebSettings.setUseWideViewPort` to `false` to align with native WebViews.
+
+## 4.5.0
+
+* Adds support to set whether to draw the scrollbar. See
+  `AndroidWebViewController.setVerticalScrollBarEnabled`,
+  `AndroidWebViewController.setHorizontalScrollBarEnabled`,
+  `AndroidWebViewController.supportsSetScrollBarsEnabled`.
+
+## 4.4.2
+
+* Updates pigeon generated code to fix `ImplicitSamInstance` and `SyntheticAccessor` Kotlin lint
+  warnings.
+
+## 4.4.1
+
+* Removes obsolete code related to supporting SDK <21.
+
+## 4.4.0
+
+* Adds support to set the over-scroll mode for the WebView. See `AndroidWebViewController.setOverScrollMode`.
+
+## 4.3.5
+
+* Adds internal wrapper methods for native `WebViewClient`.
+
+## 4.3.4
+
+* Bumps gradle from 8.0.0 to 8.9.0.
+
+## 4.3.3
+
+* Updates compileSdk 34 to flutter.compileSdkVersion.
+
+## 4.3.2
+
+* Bumps gradle-plugin to 2.1.10.
+
+## 4.3.1
+
+* Bumps gradle-plugin to 2.1.0.
+
+## 4.3.0
+
+* Adds support for disabling content URL access within WebView and disabling the Geolocation API.
+  See `AndroidWebViewController.setAllowContentAccess` and
+  `AndroidWebViewController.setGeolocationEnabled`.
+
+## 4.2.0
+
+* Adds support for configuring file access permissions. See `AndroidWebViewController.setAllowFileAccess`.
+
+## 4.1.0
+
+* Updates internal API wrapper to use `ProxyApi`s.
+
+## 4.0.3
+
+* Bumps androidx.annotation:annotation from 1.8.2 to 1.9.1.
+
+## 4.0.2
+
+* Updates README to remove contributor-focused documentation.
+
+## 4.0.1
+
+* Adds `missing_code_block_language_in_doc_comment` lint.
+
+## 4.0.0
+
+* Bumps androidx.webkit:webkit from 1.12.0 to 1.12.1.
+* **Breaking Change** Bumps Android `minSdkVersion` from 19 to 21.
+
+## 3.16.9
+
+* Updates Java compatibility version to 11.
+* Updates minimum supported SDK version to Flutter 3.24/Dart 3.5.
+
+## 3.16.8
+
+* Bumps androidx.webkit:webkit from 1.11.0 to 1.12.0.
+
 ## 3.16.7
 
 * Bumps androidx.annotation:annotation from 1.8.1 to 1.8.2.

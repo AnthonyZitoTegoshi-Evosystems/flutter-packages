@@ -4,6 +4,7 @@
 
 import 'dart:collection';
 
+import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/constant/value.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
@@ -118,7 +119,7 @@ class StatefulShellRouteConfig extends RouteBaseConfig {
   Iterable<String> classDeclarations() => <String>[
         '''
 extension $_extensionName on $_className {
-  static $_className _fromState(GoRouterState state) => const $_className();
+  static $_className _fromState(GoRouterState state) =>${routeDataClass.unnamedConstructor!.isConst ? ' const' : ''}   $_className();
 }
 '''
       ];
@@ -149,6 +150,7 @@ class StatefulShellBranchConfig extends RouteBaseConfig {
     required this.observers,
     this.restorationScopeId,
     this.initialLocation,
+    this.preload,
   }) : super._();
 
   /// The command for calling the navigator key getter from the ShellRouteData.
@@ -163,17 +165,22 @@ class StatefulShellBranchConfig extends RouteBaseConfig {
   /// The navigator observers.
   final String? observers;
 
+  /// The preload parameter.
+  final String? preload;
+
   @override
   Iterable<String> classDeclarations() => <String>[];
 
   @override
   String get factorConstructorParameters => '';
+
   @override
   String get routeConstructorParameters =>
       '${navigatorKey == null ? '' : 'navigatorKey: $navigatorKey,'}'
       '${restorationScopeId == null ? '' : 'restorationScopeId: $restorationScopeId,'}'
       '${initialLocation == null ? '' : 'initialLocation: $initialLocation,'}'
-      '${observers == null ? '' : 'observers: $observers,'}';
+      '${observers == null ? '' : 'observers: $observers,'}'
+      '${preload == null ? '' : 'preload: $preload,'}';
 
   @override
   String get routeDataClassName => 'StatefulShellBranchData';
@@ -187,6 +194,7 @@ class GoRouteConfig extends RouteBaseConfig {
   GoRouteConfig._({
     required this.path,
     required this.name,
+    required this.caseSensitive,
     required this.parentNavigatorKey,
     required super.routeDataClass,
     required super.parent,
@@ -197,6 +205,9 @@ class GoRouteConfig extends RouteBaseConfig {
 
   /// The name of the GoRoute to be created by this configuration.
   final String? name;
+
+  /// The case sensitivity of the GoRoute to be created by this configuration.
+  final bool caseSensitive;
 
   /// The parent navigator key.
   final String? parentNavigatorKey;
@@ -226,9 +237,21 @@ class GoRouteConfig extends RouteBaseConfig {
         // Enum types are encoded using a map, so we need a nullability check
         // here to ensure it matches Uri.encodeComponent nullability
         final DartType? type = _field(pathParameter)?.returnType;
-        final String value =
-            '\${Uri.encodeComponent(${_encodeFor(pathParameter)}${type?.isEnum ?? false ? '!' : ''})}';
-        return MapEntry<String, String>(pathParameter, value);
+
+        final StringBuffer valueBuffer = StringBuffer();
+
+        valueBuffer.write(r'${Uri.encodeComponent(');
+        valueBuffer.write(_encodeFor(pathParameter));
+
+        if (type?.isEnum ?? false) {
+          valueBuffer.write('!');
+        } else if (type?.isNullableType ?? false) {
+          valueBuffer.write("?? ''");
+        }
+
+        valueBuffer.write(')}');
+
+        return MapEntry<String, String>(pathParameter, valueBuffer.toString());
       }),
     );
     final String location = patternToPath(_rawJoinedPath, pathParameters);
@@ -258,6 +281,16 @@ class GoRouteConfig extends RouteBaseConfig {
     buffer.writeln(');');
 
     return buffer.toString();
+  }
+
+  String get _castedSelf {
+    if (_pathParams.isEmpty &&
+        _ctorQueryParams.isEmpty &&
+        _extraParam == null) {
+      return '';
+    }
+
+    return '\n$_className get $selfFieldName => this as $_className;\n';
   }
 
   String _decodeFor(ParameterElement element) {
@@ -313,9 +346,11 @@ class GoRouteConfig extends RouteBaseConfig {
         if (param.type.isNullableType) {
           throw NullableDefaultValueError(param);
         }
-        conditions.add('$parameterName != ${param.defaultValueCode!}');
+        conditions.add(
+          compareField(param, parameterName, param.defaultValueCode!),
+        );
       } else if (param.type.isNullableType) {
-        conditions.add('$parameterName != null');
+        conditions.add('$selfFieldName.$parameterName != null');
       }
       String line = '';
       if (conditions.isNotEmpty) {
@@ -359,29 +394,49 @@ class GoRouteConfig extends RouteBaseConfig {
 
   @override
   Iterable<String> classDeclarations() => <String>[
-        _extensionDefinition,
+        _mixinDefinition,
         ..._enumDeclarations(),
       ];
 
-  String get _extensionDefinition => '''
-extension $_extensionName on $_className {
+  String get _mixinDefinition {
+    final bool hasMixin = getNodeDeclaration<ClassDeclaration>(routeDataClass)
+            ?.withClause
+            ?.mixinTypes
+            .any((NamedType e) => e.name2.toString() == _mixinName) ??
+        false;
+
+    if (!hasMixin) {
+      throw InvalidGenerationSourceError(
+        'Missing mixin clause `with $_mixinName`',
+        element: routeDataClass,
+      );
+    }
+
+    return '''
+mixin $_mixinName on GoRouteData {
   static $_className _fromState(GoRouterState state) $_fromStateConstructor
-
+  $_castedSelf
+  @override
   String get location => GoRouteData.\$location($_locationArgs,$_locationQueryParams);
-
+  
+  @override
   void go(BuildContext context) =>
-      context.go(location${_extraParam != null ? ', extra: $extraFieldName' : ''});
-
+      context.go(location${_extraParam != null ? ', extra: $selfFieldName.$extraFieldName' : ''});
+  
+  @override
   Future<T?> push<T>(BuildContext context) =>
-      context.push<T>(location${_extraParam != null ? ', extra: $extraFieldName' : ''});
-
+      context.push<T>(location${_extraParam != null ? ', extra: $selfFieldName.$extraFieldName' : ''});
+  
+  @override
   void pushReplacement(BuildContext context) =>
-      context.pushReplacement(location${_extraParam != null ? ', extra: $extraFieldName' : ''});
-
+      context.pushReplacement(location${_extraParam != null ? ', extra: $selfFieldName.$extraFieldName' : ''});
+  
+  @override
   void replace(BuildContext context) =>
-      context.replace(location${_extraParam != null ? ', extra: $extraFieldName' : ''});
+      context.replace(location${_extraParam != null ? ', extra: $selfFieldName.$extraFieldName' : ''});
 }
 ''';
+  }
 
   /// Returns code representing the constant maps that contain the `enum` to
   /// [String] mapping for each referenced enum.
@@ -407,13 +462,13 @@ extension $_extensionName on $_className {
   }
 
   @override
-  String get factorConstructorParameters =>
-      'factory: $_extensionName._fromState,';
+  String get factorConstructorParameters => 'factory: $_mixinName._fromState,';
 
   @override
   String get routeConstructorParameters => '''
     path: ${escapeDartString(path)},
     ${name != null ? 'name: ${escapeDartString(name!)},' : ''}
+    ${caseSensitive ? '' : 'caseSensitive: $caseSensitive,'}
     ${parentNavigatorKey == null ? '' : 'parentNavigatorKey: $parentNavigatorKey,'}
 ''';
 
@@ -530,6 +585,10 @@ abstract class RouteBaseConfig {
             classElement,
             parameterName: r'$observers',
           ),
+          preload: _generateParameterGetterCode(
+            classElement,
+            parameterName: r'$preload',
+          ),
         );
       case 'TypedGoRoute':
         final ConstantReader pathValue = reader.read('path');
@@ -540,9 +599,11 @@ abstract class RouteBaseConfig {
           );
         }
         final ConstantReader nameValue = reader.read('name');
+        final ConstantReader caseSensitiveValue = reader.read('caseSensitive');
         value = GoRouteConfig._(
           path: pathValue.stringValue,
           name: nameValue.isNull ? null : nameValue.stringValue,
+          caseSensitive: caseSensitiveValue.boolValue,
           routeDataClass: classElement,
           parent: parent,
           parentNavigatorKey: _generateParameterGetterCode(
@@ -597,7 +658,7 @@ abstract class RouteBaseConfig {
               return false;
             }
             final DartType typeArgument = typeArguments.single;
-            if (typeArgument.getDisplayString(withNullability: false) !=
+            if (withoutNullability(typeArgument.getDisplayString()) !=
                 'NavigatorState') {
               return false;
             }
@@ -668,6 +729,8 @@ RouteBase get $_routeGetterName => ${_invokesRouteConstructor()};
 
   String get _className => routeDataClass.name;
 
+  String get _mixinName => '_\$$_className';
+
   String get _extensionName => '\$${_className}Extension';
 
   String _invokesRouteConstructor() {
@@ -734,13 +797,14 @@ const Map<String, String> helperNames = <String, String>{
   convertMapValueHelperName: _convertMapValueHelper,
   boolConverterHelperName: _boolConverterHelper,
   enumExtensionHelperName: _enumConverterHelper,
+  iterablesEqualHelperName: _iterableEqualsHelper,
 };
 
 const String _convertMapValueHelper = '''
 T? $convertMapValueHelperName<T>(
   String key,
   Map<String, String> map,
-  T Function(String) converter,
+  T? Function(String) converter,
 ) {
   final value = map[key];
   return value == null ? null : converter(value);
@@ -762,6 +826,21 @@ bool $boolConverterHelperName(String value) {
 
 const String _enumConverterHelper = '''
 extension<T extends Enum> on Map<T, String> {
-  T $enumExtensionHelperName(String value) =>
-      entries.singleWhere((element) => element.value == value).key;
+  T? $enumExtensionHelperName(String? value) =>
+      entries.where((element) => element.value == value).firstOrNull?.key;
+}''';
+
+const String _iterableEqualsHelper = '''
+bool $iterablesEqualHelperName<T>(Iterable<T>? iterable1, Iterable<T>? iterable2) {
+  if (identical(iterable1, iterable2)) return true;
+  if (iterable1 == null || iterable2 == null) return false;
+  final iterator1 = iterable1.iterator;
+  final iterator2 = iterable2.iterator;
+  while (true) {
+    final hasNext1 = iterator1.moveNext();
+    final hasNext2 = iterator2.moveNext();
+    if (hasNext1 != hasNext2) return false;
+    if (!hasNext1) return true;
+    if (iterator1.current != iterator2.current) return false;
+  }
 }''';

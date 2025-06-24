@@ -1,6 +1,16 @@
 ## NEXT
 
+* Updates README to indicate that Andoid SDK <21 is no longer supported.
+* Updates minimum supported SDK version to Flutter 3.27/Dart 3.6.
+
+## 1.1.0
+
+* Adds localizedSubtitle field for iOS quick actions.
+
+## 1.0.8
+
 * Updates minimum supported SDK version to Flutter 3.19/Dart 3.3.
+* Adds reference to `quick_actions_android` README in the Android section of the README.
 
 ## 1.0.7
 

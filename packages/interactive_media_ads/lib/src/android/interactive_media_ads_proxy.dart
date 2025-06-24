@@ -16,6 +16,7 @@ import 'interactive_media_ads.g.dart';
 class InteractiveMediaAdsProxy {
   /// Constructs an [InteractiveMediaAdsProxy].
   const InteractiveMediaAdsProxy({
+    this.newContentProgressProvider = ContentProgressProvider.new,
     this.newVideoProgressUpdate = VideoProgressUpdate.new,
     this.newFrameLayout = FrameLayout.new,
     this.newVideoView = VideoView.new,
@@ -23,12 +24,16 @@ class InteractiveMediaAdsProxy {
     this.newAdsLoadedListener = AdsLoadedListener.new,
     this.newAdErrorListener = AdErrorListener.new,
     this.newAdEventListener = AdEventListener.new,
+    this.newCompanionAdSlotClickListener = CompanionAdSlotClickListener.new,
     this.createAdDisplayContainerImaSdkFactory =
         ImaSdkFactory.createAdDisplayContainer,
     this.instanceImaSdkFactory = _instanceImaSdkFactory,
     this.videoTimeNotReadyVideoProgressUpdate =
         _videoTimeNotReadyVideoProgressUpdate,
   });
+
+  /// Constructs [ContentProgressProvider].
+  final ContentProgressProvider Function() newContentProgressProvider;
 
   /// Constructs [VideoProgressUpdate].
   final VideoProgressUpdate Function({
@@ -72,6 +77,11 @@ class InteractiveMediaAdsProxy {
   final AdEventListener Function({
     required void Function(AdEventListener, AdEvent) onAdEvent,
   }) newAdEventListener;
+
+  /// Constructs [CompanionAdSlotClickListener].
+  final CompanionAdSlotClickListener Function({
+    required void Function(CompanionAdSlotClickListener) onCompanionAdClick,
+  }) newCompanionAdSlotClickListener;
 
   /// Calls to [ImaSdkFactory.createAdDisplayContainer].
   final Future<AdDisplayContainer> Function(ViewGroup, VideoAdPlayer)

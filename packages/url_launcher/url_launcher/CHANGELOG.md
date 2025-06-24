@@ -1,5 +1,11 @@
 ## NEXT
 
+* Updates README to indicate that Andoid SDK <21 is no longer supported.
+* Updates minimum supported SDK version to Flutter 3.27/Dart 3.6.
+
+## 6.3.1
+
+* Removes incorrect SMS instructions from README.
 * Updates minimum supported SDK version to Flutter 3.19/Dart 3.3.
 
 ## 6.3.0

@@ -8,7 +8,7 @@ A Flutter plugin for launching a URL.
 
 |             | Android | iOS   | Linux | macOS  | Web | Windows     |
 |-------------|---------|-------|-------|--------|-----|-------------|
-| **Support** | SDK 16+ | 12.0+ | Any   | 10.14+ | Any | Windows 10+ |
+| **Support** | SDK 21+ | 12.0+ | Any   | 10.14+ | Any | Windows 10+ |
 
 ## Example
 
@@ -168,19 +168,6 @@ String? encodeQueryParameters(Map<String, String> params) {
   );
 
   launchUrl(emailLaunchUri);
-```
-
-Encoding for `sms` is slightly different:
-
-<?code-excerpt "lib/encoding.dart (sms)"?>
-```dart
-final Uri smsLaunchUri = Uri(
-  scheme: 'sms',
-  path: '0118 999 881 999 119 7253',
-  queryParameters: <String, String>{
-    'body': Uri.encodeComponent('Example Subject & Symbols are allowed!'),
-  },
-);
 ```
 
 ### URLs not handled by `Uri`

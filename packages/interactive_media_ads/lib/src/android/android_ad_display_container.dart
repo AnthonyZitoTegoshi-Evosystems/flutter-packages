@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
 
 import '../platform_interface/platform_interface.dart';
+import 'android_companion_ad_slot.dart';
 import 'android_view_widget.dart';
 import 'interactive_media_ads.g.dart' as ima;
 import 'interactive_media_ads_proxy.dart';
@@ -20,6 +21,7 @@ final class AndroidAdDisplayContainerCreationParams
   const AndroidAdDisplayContainerCreationParams({
     super.key,
     required super.onContainerAdded,
+    super.companionSlots,
     @visibleForTesting InteractiveMediaAdsProxy? imaProxy,
     @visibleForTesting PlatformViewsServiceProxy? platformViewsProxy,
   })  : _imaProxy = imaProxy ?? const InteractiveMediaAdsProxy(),
@@ -37,6 +39,7 @@ final class AndroidAdDisplayContainerCreationParams
     return AndroidAdDisplayContainerCreationParams(
       key: params.key,
       onContainerAdded: params.onContainerAdded,
+      companionSlots: params.companionSlots,
       imaProxy: imaProxy,
       platformViewsProxy: platformViewsProxy,
     );
@@ -80,7 +83,7 @@ base class AndroidAdDisplayContainer extends PlatformAdDisplayContainer {
       _androidParams._imaProxy.newFrameLayout();
 
   // Handles loading and displaying an ad.
-  late final ima.VideoView _videoView;
+  late ima.VideoView _videoView;
 
   // After an ad is loaded in the `VideoView`, this is used to control
   // playback.
@@ -120,6 +123,11 @@ base class AndroidAdDisplayContainer extends PlatformAdDisplayContainer {
 
   int? _adDuration;
 
+  // Whether MediaPlayer.start() should be called whenever the VideoView
+  // `onPrepared` callback is triggered. `onPrepared` is triggered whenever the
+  // app is resumed after being inactive.
+  bool _startPlayerWhenVideoIsPrepared = true;
+
   late final AndroidAdDisplayContainerCreationParams _androidParams =
       params is AndroidAdDisplayContainerCreationParams
           ? params as AndroidAdDisplayContainerCreationParams
@@ -138,6 +146,18 @@ base class AndroidAdDisplayContainer extends PlatformAdDisplayContainer {
             .createAdDisplayContainerImaSdkFactory(
           _frameLayout,
           _videoAdPlayer,
+        );
+        final Iterable<ima.CompanionAdSlot> nativeCompanionSlots =
+            await Future.wait(
+          _androidParams.companionSlots.map(
+            (PlatformCompanionAdSlot slot) {
+              return (slot as AndroidCompanionAdSlot)
+                  .getNativeCompanionAdSlot();
+            },
+          ),
+        );
+        await adDisplayContainer!.setCompanionSlots(
+          nativeCompanionSlots.toList(),
         );
         params.onContainerAdded(this);
       },
@@ -217,10 +237,12 @@ base class AndroidAdDisplayContainer extends PlatformAdDisplayContainer {
           if (container._savedAdPosition > 0) {
             await player.seekTo(container._savedAdPosition);
           }
-        }
 
-        await player.start();
-        container?._startAdProgressTracking();
+          if (container._startPlayerWhenVideoIsPrepared) {
+            await player.start();
+            container._startAdProgressTracking();
+          }
+        }
       },
       onError: (_, __, ___, ____) {
         final AndroidAdDisplayContainer? container = weakThis.target;
@@ -256,6 +278,9 @@ base class AndroidAdDisplayContainer extends PlatformAdDisplayContainer {
       pauseAd: (_, __) async {
         final AndroidAdDisplayContainer? container = weakThis.target;
         if (container != null) {
+          // Setting this to false ensures the ad doesn't start playing if an
+          // app is returned to the foreground.
+          container._startPlayerWhenVideoIsPrepared = false;
           await container._mediaPlayer!.pause();
           container._savedAdPosition =
               await container._videoView.getCurrentPosition();
@@ -263,16 +288,29 @@ base class AndroidAdDisplayContainer extends PlatformAdDisplayContainer {
         }
       },
       playAd: (_, ima.AdMediaInfo adMediaInfo) {
-        weakThis.target?._videoView.setVideoUri(adMediaInfo.url);
+        final AndroidAdDisplayContainer? container = weakThis.target;
+        if (container != null) {
+          container._startPlayerWhenVideoIsPrepared = true;
+          container._videoView.setVideoUri(adMediaInfo.url);
+        }
       },
       release: (_) {},
       stopAd: (_, __) {
         final AndroidAdDisplayContainer? container = weakThis.target;
         if (container != null) {
+          // Clear and reset all state.
           container._stopAdProgressTracking();
+
+          container._frameLayout.removeView(container._videoView);
+          container._videoView = _setUpVideoView(
+            WeakReference<AndroidAdDisplayContainer>(container),
+          );
+          container._frameLayout.addView(container._videoView);
+
           container._clearMediaPlayer();
           container._loadedAdMediaInfo = null;
           container._adDuration = null;
+          container._startPlayerWhenVideoIsPrepared = true;
         }
       },
     );
