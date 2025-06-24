@@ -1,5 +1,45 @@
-## NEXT
+## 2.12.1
 
+* Fixes the `zIndex` issue in the `copyWith` method.
+
+## 2.12.0
+
+* Deprecates `zIndex` parameter in `Marker` in favor of `zIndexInt`.
+* Updates minimum supported SDK version to Flutter 3.27/Dart 3.6.
+
+## 2.11.1
+
+* Updates READMEs and API docs.
+
+## 2.11.0
+
+* Adds support for animating the camera with a duration.
+
+## 2.10.0
+
+* Updates minimum supported SDK version to Flutter 3.22/Dart 3.4.
+* Adds support for ground overlay.
+
+## 2.9.5
+
+* Converts `BitmapDescriptor` to typesafe structures.
+
+## 2.9.4
+
+* Converts `PatternItem` to typesafe structure.
+* Converts `Cap` to typesafe structure.
+
+## 2.9.3
+
+* Corrects an incorrect comment in polyline.dart file.
+
+## 2.9.2
+
+* Corrects JSON tag for `CameraUpdateNewLatLngBounds`.
+
+## 2.9.1
+
+* Splits CameraUpdate into dervied classes for different update cases.
 * Updates minimum supported SDK version to Flutter 3.19/Dart 3.3.
 
 ## 2.9.0

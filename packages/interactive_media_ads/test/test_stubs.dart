@@ -11,6 +11,9 @@ final class TestInteractiveMediaAdsPlatform
     required this.onCreatePlatformAdsLoader,
     required this.onCreatePlatformAdsManagerDelegate,
     required this.onCreatePlatformAdDisplayContainer,
+    required this.onCreatePlatformContentProgressProvider,
+    this.onCreatePlatformAdsRenderingSettings,
+    this.onCreatePlatformCompanionAdSlot,
   });
 
   PlatformAdsLoader Function(PlatformAdsLoaderCreationParams params)
@@ -23,6 +26,18 @@ final class TestInteractiveMediaAdsPlatform
   PlatformAdDisplayContainer Function(
     PlatformAdDisplayContainerCreationParams params,
   ) onCreatePlatformAdDisplayContainer;
+
+  PlatformContentProgressProvider Function(
+    PlatformContentProgressProviderCreationParams params,
+  ) onCreatePlatformContentProgressProvider;
+
+  PlatformAdsRenderingSettings Function(
+    PlatformAdsRenderingSettingsCreationParams params,
+  )? onCreatePlatformAdsRenderingSettings;
+
+  PlatformCompanionAdSlot Function(
+    PlatformCompanionAdSlotCreationParams params,
+  )? onCreatePlatformCompanionAdSlot;
 
   @override
   PlatformAdsLoader createPlatformAdsLoader(
@@ -44,6 +59,32 @@ final class TestInteractiveMediaAdsPlatform
   ) {
     return onCreatePlatformAdDisplayContainer(params);
   }
+
+  @override
+  PlatformContentProgressProvider createPlatformContentProgressProvider(
+    PlatformContentProgressProviderCreationParams params,
+  ) {
+    return onCreatePlatformContentProgressProvider(params);
+  }
+
+  @override
+  PlatformAdsRenderingSettings createPlatformAdsRenderingSettings(
+    PlatformAdsRenderingSettingsCreationParams params,
+  ) {
+    return onCreatePlatformAdsRenderingSettings?.call(params) ??
+        TestAdsRenderingSettings(params);
+  }
+
+  @override
+  PlatformCompanionAdSlot createPlatformCompanionAdSlot(
+    PlatformCompanionAdSlotCreationParams params,
+  ) {
+    return onCreatePlatformCompanionAdSlot?.call(params) ??
+        TestCompanionAdSlot(
+          params,
+          onBuildWidget: (_) => Container(),
+        );
+  }
 }
 
 final class TestPlatformAdDisplayContainer extends PlatformAdDisplayContainer {
@@ -56,7 +97,7 @@ final class TestPlatformAdDisplayContainer extends PlatformAdDisplayContainer {
 
   @override
   Widget build(BuildContext context) {
-    return onBuild.call(context);
+    return onBuild(context);
   }
 }
 
@@ -69,7 +110,7 @@ final class TestPlatformAdsLoader extends PlatformAdsLoader {
 
   Future<void> Function() onContentComplete;
 
-  Future<void> Function(AdsRequest request) onRequestAds;
+  Future<void> Function(PlatformAdsRequest request) onRequestAds;
 
   @override
   Future<void> contentComplete() async {
@@ -77,7 +118,7 @@ final class TestPlatformAdsLoader extends PlatformAdsLoader {
   }
 
   @override
-  Future<void> requestAds(AdsRequest request) async {
+  Future<void> requestAds(PlatformAdsRequest request) async {
     return onRequestAds(request);
   }
 }
@@ -92,20 +133,32 @@ class TestAdsManager extends PlatformAdsManager {
     this.onSetAdsManagerDelegate,
     this.onStart,
     this.onDestroy,
+    this.onDiscardAdBreak,
+    this.onPause,
+    this.onResume,
+    this.onSkip,
   });
 
-  Future<void> Function(AdsManagerInitParams params)? onInit;
+  Future<void> Function({PlatformAdsRenderingSettings? settings})? onInit;
 
   Future<void> Function(PlatformAdsManagerDelegate delegate)?
       onSetAdsManagerDelegate;
 
   Future<void> Function(AdsManagerStartParams params)? onStart;
 
+  Future<void> Function()? onDiscardAdBreak;
+
+  Future<void> Function()? onPause;
+
+  Future<void> Function()? onResume;
+
+  Future<void> Function()? onSkip;
+
   Future<void> Function()? onDestroy;
 
   @override
-  Future<void> init(AdsManagerInitParams params) async {
-    return onInit?.call(params);
+  Future<void> init({PlatformAdsRenderingSettings? settings}) async {
+    return onInit?.call(settings: settings);
   }
 
   @override
@@ -123,5 +176,63 @@ class TestAdsManager extends PlatformAdsManager {
   @override
   Future<void> destroy() async {
     return onDestroy?.call();
+  }
+
+  @override
+  Future<void> discardAdBreak() async {
+    return onDiscardAdBreak?.call();
+  }
+
+  @override
+  Future<void> pause() async {
+    return onPause?.call();
+  }
+
+  @override
+  Future<void> resume() async {
+    return onResume?.call();
+  }
+
+  @override
+  Future<void> skip() async {
+    return onSkip?.call();
+  }
+}
+
+class TestContentProgressProvider extends PlatformContentProgressProvider {
+  TestContentProgressProvider(
+    super.params, {
+    this.onSetProgress,
+  }) : super.implementation();
+
+  Future<void> Function({
+    required Duration progress,
+    required Duration duration,
+  })? onSetProgress;
+
+  @override
+  Future<void> setProgress({
+    required Duration progress,
+    required Duration duration,
+  }) async {
+    return onSetProgress?.call(progress: progress, duration: duration);
+  }
+}
+
+final class TestAdsRenderingSettings extends PlatformAdsRenderingSettings {
+  TestAdsRenderingSettings(super.params) : super.implementation();
+}
+
+final class TestCompanionAdSlot extends PlatformCompanionAdSlot {
+  TestCompanionAdSlot(
+    super.params, {
+    required this.onBuildWidget,
+  }) : super.implementation();
+
+  Widget Function(BuildWidgetCreationParams params) onBuildWidget;
+
+  @override
+  Widget buildWidget(BuildWidgetCreationParams params) {
+    return onBuildWidget(params);
   }
 }

@@ -546,6 +546,7 @@ void main() {
       // Default
       expect(
         style,
+        // ignore: prefer_const_constructors
         AnimationStyle(
           duration: TreeView.defaultAnimationDuration,
           curve: TreeView.defaultAnimationCurve,
@@ -574,6 +575,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: TreeView<String>(
           tree: simpleNodeSet,
+          // ignore: prefer_const_constructors
           toggleAnimationStyle: AnimationStyle(
             curve: Curves.easeIn,
             duration: const Duration(milliseconds: 200),
@@ -717,6 +719,262 @@ void main() {
       expect(treeView.onNodeToggle, isA<TreeViewNodeCallback<String>>());
       expect(treeView.treeNodeBuilder, isA<TreeViewNodeBuilder<String>>());
       expect(treeView.treeRowBuilder, isA<TreeViewRowBuilder<String>>());
+    });
+
+    testWidgets(
+        'TreeViewNode should expand/collapse correctly when the animation duration is set to zero.',
+        (WidgetTester tester) async {
+      // Regression test for https://github.com/flutter/flutter/issues/154292
+      final TreeViewController controller = TreeViewController();
+      final List<TreeViewNode<String>> tree = <TreeViewNode<String>>[
+        TreeViewNode<String>('First'),
+        TreeViewNode<String>(
+          'Second',
+          children: <TreeViewNode<String>>[
+            TreeViewNode<String>(
+              'alpha',
+              children: <TreeViewNode<String>>[
+                TreeViewNode<String>('uno'),
+                TreeViewNode<String>('dos'),
+                TreeViewNode<String>('tres'),
+              ],
+            ),
+            TreeViewNode<String>('beta'),
+            TreeViewNode<String>('kappa'),
+          ],
+        ),
+        TreeViewNode<String>(
+          'Third',
+          expanded: true,
+          children: <TreeViewNode<String>>[
+            TreeViewNode<String>('gamma'),
+            TreeViewNode<String>('delta'),
+            TreeViewNode<String>('epsilon'),
+          ],
+        ),
+        TreeViewNode<String>('Fourth'),
+      ];
+
+      await tester.pumpWidget(MaterialApp(
+        home: TreeView<String>(
+          tree: tree,
+          controller: controller,
+          // ignore: prefer_const_constructors
+          toggleAnimationStyle: AnimationStyle(
+            curve: Curves.easeInOut,
+            duration: Duration.zero,
+          ),
+          treeNodeBuilder: (
+            BuildContext context,
+            TreeViewNode<Object?> node,
+            AnimationStyle animationStyle,
+          ) {
+            final Widget child = GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () => controller.toggleNode(node),
+              child: TreeView.defaultTreeNodeBuilder(
+                context,
+                node,
+                animationStyle,
+              ),
+            );
+
+            return child;
+          },
+        ),
+      ));
+
+      expect(find.text('First'), findsOneWidget);
+      expect(find.text('Second'), findsOneWidget);
+      expect(find.text('Third'), findsOneWidget);
+      expect(find.text('Fourth'), findsOneWidget);
+      expect(find.text('alpha'), findsNothing);
+      expect(find.text('beta'), findsNothing);
+      expect(find.text('kappa'), findsNothing);
+      expect(find.text('gamma'), findsOneWidget);
+      expect(find.text('delta'), findsOneWidget);
+      expect(find.text('epsilon'), findsOneWidget);
+      expect(find.text('uno'), findsNothing);
+      expect(find.text('dos'), findsNothing);
+      expect(find.text('tres'), findsNothing);
+
+      await tester.tap(find.text('Second'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('alpha'), findsOneWidget);
+
+      await tester.tap(find.text('alpha'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('uno'), findsOneWidget);
+      expect(find.text('dos'), findsOneWidget);
+      expect(find.text('tres'), findsOneWidget);
+
+      await tester.tap(find.text('alpha'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('uno'), findsNothing);
+      expect(find.text('dos'), findsNothing);
+      expect(find.text('tres'), findsNothing);
+    });
+
+    testWidgets(
+        'TreeViewNode should close all child nodes when collapsed, once the animation is completed',
+        (WidgetTester tester) async {
+      final TreeViewController controller = TreeViewController();
+      final List<TreeViewNode<String>> tree = <TreeViewNode<String>>[
+        TreeViewNode<String>(
+          'First',
+          expanded: true,
+          children: <TreeViewNode<String>>[
+            TreeViewNode<String>(
+              'alpha',
+              expanded: true,
+              children: <TreeViewNode<String>>[
+                TreeViewNode<String>('uno'),
+                TreeViewNode<String>('dos'),
+                TreeViewNode<String>('tres'),
+              ],
+            ),
+            TreeViewNode<String>('beta'),
+            TreeViewNode<String>('kappa'),
+          ],
+        ),
+      ];
+
+      await tester.pumpWidget(MaterialApp(
+        home: TreeView<String>(
+          tree: tree,
+          controller: controller,
+          // ignore: prefer_const_constructors
+          toggleAnimationStyle: AnimationStyle(
+            curve: Curves.easeInOut,
+            duration: const Duration(milliseconds: 200),
+          ),
+          treeNodeBuilder: (
+            BuildContext context,
+            TreeViewNode<Object?> node,
+            AnimationStyle animationStyle,
+          ) {
+            final Widget child = GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () => controller.toggleNode(node),
+              child: TreeView.defaultTreeNodeBuilder(
+                context,
+                node,
+                animationStyle,
+              ),
+            );
+
+            return child;
+          },
+        ),
+      ));
+
+      expect(find.text('alpha'), findsOneWidget);
+      expect(find.text('uno'), findsOneWidget);
+      expect(find.text('dos'), findsOneWidget);
+      expect(find.text('tres'), findsOneWidget);
+
+      // Using runAsync to handle collapse and animations properly.
+      await tester.runAsync(() async {
+        await tester.tap(find.text('alpha'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('uno'), findsNothing);
+        expect(find.text('dos'), findsNothing);
+        expect(find.text('tres'), findsNothing);
+      });
+    });
+
+    testWidgets('Expand then collapse with offscreen nodes (top)',
+        (WidgetTester tester) async {
+      final ScrollController verticalController = ScrollController();
+      final TreeViewController controller = TreeViewController();
+      addTearDown(verticalController.dispose);
+
+      final List<TreeViewNode<String>> tree = <TreeViewNode<String>>[
+        TreeViewNode<String>(
+          'alpha',
+          children: <TreeViewNode<String>>[
+            TreeViewNode<String>('a'),
+            TreeViewNode<String>('b'),
+            TreeViewNode<String>('c'),
+          ],
+        ),
+        TreeViewNode<String>(
+          'beta',
+          children: <TreeViewNode<String>>[
+            TreeViewNode<String>('d'),
+            TreeViewNode<String>('e'),
+            TreeViewNode<String>('f'),
+          ],
+        ),
+        TreeViewNode<String>(
+          'gamma',
+          children: <TreeViewNode<String>>[
+            TreeViewNode<String>('g'),
+            TreeViewNode<String>('h'),
+            TreeViewNode<String>('i'),
+          ],
+        ),
+        TreeViewNode<String>(
+          'delta',
+          children: <TreeViewNode<String>>[
+            TreeViewNode<String>('j'),
+            TreeViewNode<String>('k'),
+            TreeViewNode<String>('l'),
+          ],
+        ),
+      ];
+
+      await tester.pumpWidget(MaterialApp(
+        home: TreeView<String>(
+          tree: tree,
+          controller: controller,
+          toggleAnimationStyle: AnimationStyle.noAnimation,
+          verticalDetails: ScrollableDetails.vertical(
+            controller: verticalController,
+          ),
+          treeNodeBuilder: (
+            BuildContext context,
+            TreeViewNode<Object?> node,
+            AnimationStyle animationStyle,
+          ) =>
+              GestureDetector(
+            onTap: () => controller.toggleNode(node),
+            child: TreeView.defaultTreeNodeBuilder(
+              context,
+              node,
+              animationStyle,
+            ),
+          ),
+        ),
+      ));
+
+      // Expand a few nodes
+      await tester.tap(find.text('alpha'));
+      await tester.tap(find.text('beta'));
+      await tester.tap(find.text('gamma'));
+      await tester.tap(find.text('delta'));
+      await tester.pumpAndSettle();
+
+      // Scroll down to hide some of them
+      expect(verticalController.position.pixels, 0.0);
+      const double defaultRowExtent = 40;
+      verticalController.jumpTo(3 * defaultRowExtent + 10);
+      await tester.pump();
+      expect(find.text('alpha'), findsNothing);
+
+      // Collapse the bottommost node
+      expect(find.text('j'), findsOneWidget);
+      expect(find.text('k'), findsOneWidget);
+      expect(find.text('l'), findsOneWidget);
+      await tester.tap(find.text('delta'));
+      await tester.pumpAndSettle();
+      expect(find.text('j'), findsNothing);
+      expect(find.text('k'), findsNothing);
+      expect(find.text('l'), findsNothing);
     });
   });
 

@@ -20,6 +20,8 @@ import 'state.dart';
 typedef GoRouterRedirect = FutureOr<String?> Function(
     BuildContext context, GoRouterState state);
 
+typedef _NamedPath = ({String path, bool caseSensitive});
+
 /// The route configuration for GoRouter configured by the app.
 class RouteConfiguration {
   /// Constructs a [RouteConfiguration].
@@ -36,12 +38,9 @@ class RouteConfiguration {
     for (final RouteBase route in routes) {
       late bool subRouteIsTopLevel;
       if (route is GoRoute) {
-        if (isTopLevel) {
-          assert(route.path.startsWith('/'),
-              'top-level path must start with "/": $route');
-        } else {
-          assert(!route.path.startsWith('/') && !route.path.endsWith('/'),
-              'sub-route path may not start or end with "/": $route');
+        if (route.path != '/') {
+          assert(!route.path.endsWith('/'),
+              'route path may not end with "/" except for the top "/" route. Found: $route');
         }
         subRouteIsTopLevel = false;
       } else if (route is ShellRouteBase) {
@@ -249,27 +248,29 @@ class RouteConfiguration {
   ///    example.
   final Codec<Object?, Object?>? extraCodec;
 
-  final Map<String, String> _nameToPath = <String, String>{};
+  final Map<String, _NamedPath> _nameToPath = <String, _NamedPath>{};
 
   /// Looks up the url location by a [GoRoute]'s name.
   String namedLocation(
     String name, {
     Map<String, String> pathParameters = const <String, String>{},
     Map<String, dynamic> queryParameters = const <String, dynamic>{},
+    String? fragment,
   }) {
     assert(() {
       log('getting location for name: '
           '"$name"'
           '${pathParameters.isEmpty ? '' : ', pathParameters: $pathParameters'}'
-          '${queryParameters.isEmpty ? '' : ', queryParameters: $queryParameters'}');
+          '${queryParameters.isEmpty ? '' : ', queryParameters: $queryParameters'}'
+          '${fragment != null ? ', fragment: $fragment' : ''}');
       return true;
     }());
     assert(_nameToPath.containsKey(name), 'unknown route name: $name');
-    final String path = _nameToPath[name]!;
+    final _NamedPath path = _nameToPath[name]!;
     assert(() {
       // Check that all required params are present
       final List<String> paramNames = <String>[];
-      patternToRegExp(path, paramNames);
+      patternToRegExp(path.path, paramNames, caseSensitive: path.caseSensitive);
       for (final String paramName in paramNames) {
         assert(pathParameters.containsKey(paramName),
             'missing param "$paramName" for $path');
@@ -285,10 +286,14 @@ class RouteConfiguration {
       for (final MapEntry<String, String> param in pathParameters.entries)
         param.key: Uri.encodeComponent(param.value)
     };
-    final String location = patternToPath(path, encodedParams);
+    final String location = patternToPath(
+      path.path,
+      encodedParams,
+    );
     return Uri(
             path: location,
-            queryParameters: queryParameters.isEmpty ? null : queryParameters)
+            queryParameters: queryParameters.isEmpty ? null : queryParameters,
+            fragment: fragment)
         .toString();
   }
 
@@ -528,8 +533,9 @@ class RouteConfiguration {
 
     if (_nameToPath.isNotEmpty) {
       sb.writeln('known full paths for route names:');
-      for (final MapEntry<String, String> e in _nameToPath.entries) {
-        sb.writeln('  ${e.key} => ${e.value}');
+      for (final MapEntry<String, _NamedPath> e in _nameToPath.entries) {
+        sb.writeln(
+            '  ${e.key} => ${e.value.path}${e.value.caseSensitive ? '' : ' (case-insensitive)'}');
       }
     }
 
@@ -594,8 +600,9 @@ class RouteConfiguration {
           assert(
               !_nameToPath.containsKey(name),
               'duplication fullpaths for name '
-              '"$name":${_nameToPath[name]}, $fullPath');
-          _nameToPath[name] = fullPath;
+              '"$name":${_nameToPath[name]!.path}, $fullPath');
+          _nameToPath[name] =
+              (path: fullPath, caseSensitive: route.caseSensitive);
         }
 
         if (route.routes.isNotEmpty) {

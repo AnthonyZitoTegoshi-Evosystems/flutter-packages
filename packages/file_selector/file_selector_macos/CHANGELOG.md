@@ -1,5 +1,15 @@
-## NEXT
+## 0.9.4+3
 
+* Updates configuration to not set `nameFieldStringValue` for `NSOpenPanel`.
+* Updates minimum supported SDK version to Flutter 3.27/Dart 3.6.
+
+## 0.9.4+2
+
+* Updates Pigeon for non-nullable collection type support.
+
+## 0.9.4+1
+
+* Adds privacy manifest.
 * Updates minimum supported SDK version to Flutter 3.19/Dart 3.3.
 
 ## 0.9.4

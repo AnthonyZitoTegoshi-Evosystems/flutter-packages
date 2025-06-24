@@ -1,5 +1,118 @@
-## NEXT
+## 0.9.20+1
 
+* Migrates lifecycle methods (`start`, `stop`, `close`) to Swift.
+* Migrates exposure and focus related methods to Swift.
+* Migrates `receivedImageStreamData` and `reportInitializationState` methods to Swift.
+
+## 0.9.20
+
+* Fixes incorrect types in image stream events.
+
+## 0.9.19+3
+
+* Fixes race condition when starting image stream.
+
+## 0.9.19+2
+
+* Adds the `Camera` Swift protocol.
+* Adds `DefaultCamera`, a `FLTCam`-based implementation of the `Camera` protocol.
+* Migrates sample buffer delegates and `FlutterTexture` protocol implementations to `DefaultCamera`.
+
+## 0.9.19+1
+
+* Adds `audioCaptureDeviceFactory` to `FLTCamConfiguration`.
+* Renames the `lockCaptureOrientation` method of Objective-C type `FLTCam` when exported to Swift.
+* Renames arguments of the `captureOutput` method of Objective-C type `FLTCam` when exported to Swift.
+* Changes the `connection` argument type of the `captureOutput` method of the of `FLTCam` class to `AVCaptureConnection`.
+* Makes `minimum/maximumAvailableZoomFactor` and `minimum/maximumExposureOffset` fields of `FLTCam` readonly.
+* Updates minimum supported SDK version to Flutter 3.27/Dart 3.6.
+
+## 0.9.19
+
+* Migrates the CameraPlugin class to Swift.
+* Fixes camera name being ignored in `setDescriptionWhileRecording`.
+
+## 0.9.18+14
+
+* Creates Swift Package Manager target for Swift implementation.
+
+## 0.9.18+13
+
+* Migrates test utils and mocks to Swift.
+* Aligns `FLTCaptureDevice` more closely with the `AVCaptureDevice` interface.
+
+## 0.9.18+12
+
+* Migrates test utils and mocks to Swift.
+* Renames the methods of Objective-C type `FLTCaptureSession` when exported to Swift.
+
+## 0.9.18+11
+
+* Backfills unit tests for the `FLTCam` class.
+* Refactors implementation to allow mocking of `AVCaptureVideoDataOutput` in tests.
+
+## 0.9.18+10
+
+* Backfills unit tests for the `FLTCam` class.
+* Makes `exposureMode`, `focusMode`, and `flashMode` properties of `FLTCam` private.
+
+## 0.9.18+9
+
+* Backfills unit tests for `CameraPlugin` class.
+* Adds `minimumExposureOffset` and `maximumExposureOffset` methods to `FLTCam` class.
+
+## 0.9.18+8
+
+* Migrates unit tests to Swift.
+
+## 0.9.18+7
+
+* Fixes crash when setting `activeFormat` on `FLTCaptureDevice`.
+
+## 0.9.18+6
+
+* Refactors implementations to remove remaining usage of OCMock in internal testing.
+
+## 0.9.18+5
+
+* Migrates unit tests to Swift.
+
+## 0.9.18+4
+
+* Refactors implementations to reduce usage of OCMock in internal testing.
+
+## 0.9.18+3
+
+* Refactors implementations to reduce usage of OCMock in internal testing.
+
+## 0.9.18+2
+
+* Refactors implementations to reduce usage of OCMock in internal testing.
+
+## 0.9.18+1
+
+* Refactors implementations to reduce usage of OCMock in internal testing.
+
+## 0.9.18
+
+* Adds API support query for image streaming.
+
+## 0.9.17+7
+
+* Fixes changing global audio session category to be collision free across plugins.
+
+## 0.9.17+6
+
+* Updates minimum supported SDK version to Flutter 3.22/Dart 3.4.
+* Removes OCMock usage from permission tests
+
+## 0.9.17+5
+
+* Adds ability to use any supported FPS and fixes crash when using unsupported FPS.
+
+## 0.9.17+4
+
+* Updates Pigeon for non-nullable collection type support.
 * Updates minimum supported SDK version to Flutter 3.19/Dart 3.3.
 
 ## 0.9.17+3
@@ -12,7 +125,7 @@
 
 ## 0.9.17+1
 
-* Fixes a crash due to appending sample buffers when readyForMoreMediaData is NO
+* Fixes a crash due to appending sample buffers when readyForMoreMediaData is NO.
 
 ## 0.9.17
 

@@ -9,7 +9,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:logging/logging.dart';
-import 'package:meta/meta.dart';
+import 'package:meta/meta.dart' as meta;
 
 import 'configuration.dart';
 import 'logging.dart';
@@ -203,6 +203,7 @@ abstract class RouteMatchBase with Diagnosticable {
 
     final RegExpMatch? regExpMatch =
         route.matchPatternAsPrefix(remainingLocation);
+
     if (regExpMatch == null) {
       return _empty;
     }
@@ -217,7 +218,17 @@ abstract class RouteMatchBase with Diagnosticable {
     final String newMatchedLocation =
         concatenatePaths(matchedLocation, pathLoc);
     final String newMatchedPath = concatenatePaths(matchedPath, route.path);
-    if (newMatchedLocation.toLowerCase() == uri.path.toLowerCase()) {
+
+    final String newMatchedLocationToCompare;
+    final String uriPathToCompare;
+    if (route.caseSensitive) {
+      newMatchedLocationToCompare = newMatchedLocation;
+      uriPathToCompare = uri.path;
+    } else {
+      newMatchedLocationToCompare = newMatchedLocation.toLowerCase();
+      uriPathToCompare = uri.path.toLowerCase();
+    }
+    if (newMatchedLocationToCompare == uriPathToCompare) {
       // A complete match.
       pathParameters.addAll(currentPathParameter);
 
@@ -231,7 +242,7 @@ abstract class RouteMatchBase with Diagnosticable {
         ],
       };
     }
-    assert(uri.path.startsWith(newMatchedLocation));
+    assert(uriPathToCompare.startsWith(newMatchedLocationToCompare));
     assert(remainingLocation.isNotEmpty);
 
     final String childRestLoc = uri.path.substring(
@@ -391,7 +402,7 @@ class ShellRouteMatch extends RouteMatchBase {
   ///
   /// This is typically used when pushing or popping [RouteMatchBase] from
   /// [RouteMatchList].
-  @internal
+  @meta.internal
   ShellRouteMatch copyWith({
     required List<RouteMatchBase>? matches,
   }) {
@@ -555,13 +566,9 @@ class RouteMatchList with Diagnosticable {
   /// [RouteMatchA(), RouteMatchB(), RouteMatchC()]
   /// ```
   static String _generateFullPath(Iterable<RouteMatchBase> matches) {
-    final StringBuffer buffer = StringBuffer();
-    bool addsSlash = false;
+    String fullPath = '';
     for (final RouteMatchBase match in matches
         .where((RouteMatchBase match) => match is! ImperativeRouteMatch)) {
-      if (addsSlash) {
-        buffer.write('/');
-      }
       final String pathSegment;
       if (match is RouteMatch) {
         pathSegment = match.route.path;
@@ -571,10 +578,9 @@ class RouteMatchList with Diagnosticable {
         assert(false, 'Unexpected match type: $match');
         continue;
       }
-      buffer.write(pathSegment);
-      addsSlash = pathSegment.isNotEmpty && (addsSlash || pathSegment != '/');
+      fullPath = concatenatePaths(fullPath, pathSegment);
     }
-    return buffer.toString();
+    return fullPath;
   }
 
   /// Returns true if there are no matches.
@@ -654,9 +660,20 @@ class RouteMatchList with Diagnosticable {
         matches: newMatches,
       );
     }
+
+    if (newMatches.isEmpty) {
+      return RouteMatchList.empty;
+    }
+
+    RouteBase newRoute = newMatches.last.route;
+    while (newRoute is ShellRouteBase) {
+      newRoute = newRoute.routes.last;
+    }
+    newRoute as GoRoute;
     // Need to remove path parameters that are no longer in the fullPath.
     final List<String> newParameters = <String>[];
-    patternToRegExp(fullPath, newParameters);
+    patternToRegExp(fullPath, newParameters,
+        caseSensitive: newRoute.caseSensitive);
     final Set<String> validParameters = newParameters.toSet();
     final Map<String, String> newPathParameters =
         Map<String, String>.fromEntries(
@@ -760,7 +777,7 @@ class RouteMatchList with Diagnosticable {
   /// returns false.
   ///
   /// This method visit recursively into shell route matches.
-  @internal
+  @meta.internal
   void visitRouteMatches(RouteMatchVisitor visitor) {
     _visitRouteMatches(matches, visitor);
   }
@@ -780,7 +797,7 @@ class RouteMatchList with Diagnosticable {
   }
 
   /// Create a new [RouteMatchList] with given parameter replaced.
-  @internal
+  @meta.internal
   RouteMatchList copyWith({
     List<RouteMatchBase>? matches,
     Uri? uri,
@@ -835,7 +852,7 @@ class RouteMatchList with Diagnosticable {
 /// suitable for using with [StandardMessageCodec].
 ///
 /// The primary use of this class is for state restoration and browser history.
-@internal
+@meta.internal
 class RouteMatchListCodec extends Codec<RouteMatchList, Map<Object?, Object?>> {
   /// Creates a new [RouteMatchListCodec] object.
   RouteMatchListCodec(RouteConfiguration configuration)
